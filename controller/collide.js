@@ -84,15 +84,17 @@ const getUploadGeometry = async (ctx) => {
             ctx.status = 200;
             info = "上传成功";
             if (coortype === 'GCJ-02') {
-                results = JSON.stringify(geojson);
+                //当是火星坐标系时，不需要进行转换  FeatureCollection
+                results = geojson;
             }
             else {
                 let geometryCollection = toGeoCollection(geojson)
                 let geometryCollectionStr = JSON.stringify(geometryCollection);
                 let sql = `select GIS_Coordinate_Transform('${geometryCollectionStr}','${coortype}','4326','LINESTRING')`;
                 const res = await connectPipeline(sql);
+                
                 let resultGeometryCollection = toGeoCollection(JSON.parse(res[0].gis_coordinate_transform));
-                results = JSON.stringify(resultGeometryCollection);
+                results = resultGeometryCollection;
 
             }
         }
@@ -114,7 +116,15 @@ const getUploadGeometry = async (ctx) => {
 }
 const getAnalyzeGeometry = async (ctx) => {
     const { uploadGeoJsonStr, zy, gj, ylz, msfs, gjvalue } = ctx.query;
-    let sql = `select buffer_filter_byinputline('${uploadGeoJsonStr}','public','prospectlinegcj','${zy}','${gj}','${ylz}','${msfs}','${gjvalue}')`;
+    let uploadGeom = ''
+    //判断是geometryCollection 还是FeatureCollection  这里只有转换成GeometryCollection才可以  火星坐标系在这里是FeatureCollection
+    //其它坐标系是GeometryCollection
+    if(JSON.parse(uploadGeoJsonStr).type==='FeatureCollection'){
+        uploadGeom =JSON.stringify(toGeoCollection(JSON.parse(uploadGeoJsonStr)));
+    }else{
+        uploadGeom = uploadGeoJsonStr
+    }
+    let sql = `select buffer_filter_byinputline('${uploadGeom}','public','prospectlinegcj','${zy}','${gj}','${ylz}','${msfs}','${gjvalue}')`;
     const res = await connectPipeline(sql);
     const results = res[0].buffer_filter_byinputline;
     ctx.status = 200;
@@ -122,6 +132,5 @@ const getAnalyzeGeometry = async (ctx) => {
         info: "分析完成",
         data: results
     };
-
 }
 module.exports = { getUploadGeometry, getAnalyzeGeometry }
