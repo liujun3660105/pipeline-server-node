@@ -22,6 +22,7 @@ module.exports = (app) => {
     app.use(jwtAuth({
         secret: token_secret
     }).unless({
+        //登陆不进行token验证
         path: [/login/]
     }))
 }

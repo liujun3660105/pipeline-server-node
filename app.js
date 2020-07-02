@@ -8,7 +8,10 @@ const jwtAuth = require("./middleware/token");
 const cors = require('./middleware/cors');
 const error = require("./middleware/error");
 const koaBody = require("koa-body");
-app.use(static(__dirname + '/'));
+const path = require('path');
+// app.use(static(path.join(__dirname , 'files')));
+app.use(static('./'));
+
 // app.use(require("koa-bodyparser")());
 app.use(koaBody({
     multipart:true//支持文件上传
@@ -17,18 +20,7 @@ app.use(koaBody({
 app.use(error);
 app.use(cors);
 jwtAuth(app);
-// app.use(jwtAuth({
-//     secret: 'bupd'
-// }).unless({
-//     path:[/login/]
-// }));
 
-//跨域中间件
-
-// app.use(async (ctx,next)=>{
-//     ctx.set('Access-Control-Allow-Origin','*');
-//     await next();
-// });
 app.use(router.routes());
 
 

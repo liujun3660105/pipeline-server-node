@@ -1,26 +1,22 @@
+
 const connectPipeline = require("../model/pipeline");
-const getFeature = async (ctx) => {
-    const { keyWord, keyWordType } = ctx.query;
-    let filter = keyWord ? `and xmbm like '%${keyWord}%'` : ''
-    let sql = `
-    select row_to_json(fc) from (
-        select 'FeatureCollection' as "type",array_to_json(array_agg(f)) as "features" from (
-            select 'Feature' as "type",ST_AsGeoJSON(geom)::json as "geometry",(
-                select row_to_json(t) from (
-                    select gxcl,msfs,gj,dlts,glts,ylz,yyks,gxyjlb,gxyjlbdm,gxdl,gxdldm,xmbm,ly,bz) t) as "properties"
-                    from xm.xmline where ly='${keyWordType}' ${filter}) as f
-                ) as fc
-        `
-    const res = await connectPipeline(sql);
-    const result = res.map(item => {
-        return item.row_to_json
+const path = require('path');
+const fs = require('fs-extra');
+
+
+//判断项目信息中的项目编号 是否有对应的文件
+const addFileInfo = (fileType,preXmInfoList) => {
+    let filePath = path.resolve(__dirname,'..','files',fileType);
+    let newXmInfo = preXmInfoList.map(xminfo=>{
+        let file = filePath+'/'+xminfo.xmbh+'.zip';
+        xminfo.hasFile = fs.pathExistsSync(file)? true: false
+        return xminfo
     })
-    ctx.status = 200;
-    ctx.body = {
-        info: "查询成功",
-        data: result
-    }
+    return newXmInfo
 }
+
+
+
 
 
 //关键字查询
@@ -31,11 +27,13 @@ const getXminfoByKey = async (ctx) => {
     const res = await connectPipeline(sql);
     const result = res.map(item => {
         return item.row_to_json
-    })
+    });
+    //得到新的项目信息
+    const newResult = addFileInfo(keyWordType,result)
     ctx.status = 200;
     ctx.body = {
         info: "查询成功",
-        data: result
+        data: newResult
     }
 }
 const getFeatureById = async (ctx) => {
@@ -93,20 +91,18 @@ const getFeatureByGeom = async (ctx) => {
     })
     // let sql_xmInfo = `select row_to_json(xminfo.${fieldType}.*) from xminfo.${fieldType} where  xmbm in (${ids})`;
     let sql_xmInfo = `select * from xminfo.${fieldType} where xmbh in (${ids})`;
-    console.log('项目信息查询sql',sql_xmInfo);
     const xmInfo = await connectPipeline(sql_xmInfo);
+    const newXmInfo = addFileInfo(fieldType,xmInfo);
     ctx.status = 200;
     ctx.body = {
         info:"查询成功",
         data:{
-            xmInfo,
+            xmInfo:newXmInfo,
             geojsonResult
         }
 
     }
 }
-const getXmInfoById = async (ctx) => {
 
-}
 
-module.exports = { getXminfoByKey, getFeatureById, getFeatureByGeom, getXmInfoById }
+module.exports = { getXminfoByKey, getFeatureById, getFeatureByGeom }
